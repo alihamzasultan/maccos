@@ -3,87 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Recorder</title>
+    <title>Audio Recorder</title>
+    <script src="https://ai.github.io/audio-recorder-polyfill/audio-recorder-polyfill.js"></script>
     <style>
-        #listening-indicator {
-            display: none;
-            color: red;
-            font-weight: bold;
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
         }
-        .dot {
-            height: 10px;
-            width: 10px;
-            background-color: red;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
         }
-        #audio-player {
-            display: none;
-            margin-top: 10px;
+        audio {
+            display: block;
+            margin: 20px auto;
         }
     </style>
 </head>
 <body>
-    <h1>Voice Recorder</h1>
-    <button id="start-recording">Start Recording</button>
-    <button id="stop-recording">Stop Recording</button>
-    <p id="listening-indicator"><span class="dot"></span> Listening...</p>
-    <audio id="audio-player" controls></audio>
+
+    <h2>Simple Audio Recorder</h2>
+    <button id="start">Start Recording</button>
+    <button id="stop" disabled>Stop Recording</button>
+    <audio id="audio" controls></audio>
 
     <script>
-        let mediaRecorder;
-        let audioChunks = [];
-        const indicator = document.getElementById("listening-indicator");
-        const audioPlayer = document.getElementById("audio-player");
+        let recorder, audioChunks = [];
 
-        async function requestMicrophoneAccess() {
+        document.getElementById("start").addEventListener("click", async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                console.log("✅ Microphone access granted");
-                return stream;
-            } catch (error) {
-                console.error("❌ Microphone access denied:", error);
-                alert("Please enable microphone access in your browser settings.");
-                return null;
-            }
-        }
 
-        async function startRecording() {
-            const stream = await requestMicrophoneAccess();
-            if (!stream) return;
+                recorder = new MediaRecorder(stream);
+                recorder.start();
 
-            audioChunks = [];
-            mediaRecorder = new MediaRecorder(stream);
-            indicator.style.display = "block";
-
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
+                recorder.addEventListener("dataavailable", event => {
                     audioChunks.push(event.data);
-                }
-            };
+                });
 
-            mediaRecorder.onstop = () => {
-                indicator.style.display = "none";
-                const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                audioPlayer.src = audioUrl;
-                audioPlayer.style.display = "block";
-            };
+                recorder.addEventListener("stop", () => {
+                    const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+                    document.getElementById("audio").src = URL.createObjectURL(audioBlob);
+                    audioChunks = [];
+                });
 
-            mediaRecorder.start();
-            console.log("🎙️ Recording started...");
-        }
-
-        function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                mediaRecorder.stop();
-                console.log("🛑 Recording stopped.");
+                document.getElementById("start").disabled = true;
+                document.getElementById("stop").disabled = false;
+            } catch (error) {
+                alert("Microphone access denied or not supported.");
             }
-        }
+        });
 
-        document.getElementById("start-recording").addEventListener("click", startRecording);
-        document.getElementById("stop-recording").addEventListener("click", stopRecording);
+        document.getElementById("stop").addEventListener("click", () => {
+            recorder.stop();
+            document.getElementById("start").disabled = false;
+            document.getElementById("stop").disabled = true;
+        });
     </script>
+
 </body>
 </html>
